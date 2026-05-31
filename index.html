@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생명과학 분야 도서 검색</title>
+    <style>
+        :root {
+            --primary-color: #2E7D32;
+            --light-green: #E8F5E9;
+            --text-color: #333;
+            --bg-color: #f9f9f9;
+        }
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); }
+        
+        /* 5. 상단 사이트 이름 항상 표출 */
+        header { background-color: var(--primary-color); color: white; padding: 20px; text-align: center; cursor: pointer; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        header h1 { margin: 0; font-size: 24px; }
+        
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        /* 1, 8. 사이트 이용 안내 상단 배치 */
+        .description-box { background-color: var(--light-green); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; border-left: 5px solid var(--primary-color); }
+        .description-box ul { margin: 5px 0; padding-left: 20px; }
+        .description-box li { margin-bottom: 5px; }
+        
+        /* CSV 파일 로드 박스 */
+        .file-load-box { background-color: #FFF3E0; border: 1px dashed #FF9800; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .file-status { font-weight: bold; color: #E65100; margin-bottom: 10px; font-size: 15px; }
+
+        /* 7. 홈화면 구성 요소 제어 패널 */
+        .control-panel { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; align-items: center; }
+        .search-box { display: flex; gap: 10px; align-items: center; }
+        .filter-box { display: flex; gap: 10px; align-items: center; }
+        
+        input[type="text"], select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; outline: none; }
+        button { padding: 8px 15px; border: none; background-color: var(--primary-color); color: white; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background-color: #1B5E20; }
+        .btn-random { background-color: #F57F17; }
+        .btn-random:hover { background-color: #F9A825; }
+
+        /* 0. 도서 목록 스타일 */
+        .book-list { display: flex; flex-direction: column; gap: 10px; }
+        .book-item { padding: 15px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .book-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fdfdfd; }
+        .book-title { font-size: 18px; font-weight: bold; color: var(--primary-color); margin-bottom: 8px; }
+        .book-info { font-size: 13px; color: #555; line-height: 1.4; }
+
+        /* 1. 상세 페이지 스타일 */
+        #detail-view { display: none; }
+        .detail-header { border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px; }
+        .detail-title { font-size: 24px; color: var(--primary-color); margin-bottom: 10px; }
+        .detail-meta { background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; line-height: 1.8; }
+        .detail-section { margin-bottom: 20px; }
+        .detail-section h3 { color: var(--primary-color); margin-bottom: 10px; font-size: 18px; }
+        .detail-content { background: white; padding: 15px; border: 1px solid #ddd; border-radius: 6px; white-space: pre-wrap; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <header onclick="goHome()">
+        <h1>생명과학 분야 도서 검색</h1>
+    </header>
+
+    <div class="container">
+        <div id="home-view">
+            
+            <div class="description-box">
+                <strong>💡 사이트 이용 안내 및 기능 설명</strong>
+                <ul>
+                    <li><strong>간단 검색창:</strong> 특정 키워드를 검색하면 그 키워드가 책 제목에 포함되어 있는 모든 도서 목록을 불러옵니다.</li>
+                    <li><strong>상세 검색창:</strong> 특정 키워드를 검색하면 그 키워드가 책 제목, 설명, 목차 중 어느 한 곳이라도 포함되어 있는 모든 도서 목록을 불러옵니다.</li>
+                    <li><strong>1/2/3학년 교과 선택창:</strong> 학년을 고른 후 나타나는 세부 교과목 "1개"를 선택하면, 해당 교과 활동에 추천하는 도서 목록을 필터링하여 보여줍니다.</li>
+                    <li><strong>랜덤 도서 추천받기 버튼:</strong> 어떤 책을 선택할지 고민될 때 누르면 전체 도서 중 무작위로 하나의 도서를 선정하여 안내 팝업을 띄우고 바로 해당 도서의 상세 정보 페이지로 이동시켜 줍니다.</li>
+                    <li style="margin-top: 5px; color: #D32F2F; font-weight: bold;">⚠️ 주의: "동식물" 카테고리 도서는 포함되어있지 않습니다.</li>
+                    
+                    <li style="margin-top: 10px; color: #1B5E20; list-style-type: none; font-weight: bold;">🛠️ 사이트 제작: 신지민</li>
+                    <li style="color: #1B5E20; list-style-type: none; font-weight: bold;">💬 문의사항: 카카오톡 오픈채팅 1oWww 검색</li>
+                </ul>
+            </div>
+
+            <div class="file-load-box">
+                <div id="file-status-text" class="file-status">⚠️ 아직 도서 데이터 파일이 연결되지 않았습니다.</div>
+                <input type="file" id="csv-file-input" accept=".csv" onchange="loadLocalCSV(this)">
+                <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">구글 스프레드시트에서 다운로드하신 [.csv] 파일을 선택하시면 114권 전체가 즉시 로드됩니다.</p>
+            </div>
+
+            <div class="control-panel">
+                <div class="search-box">
+                    <input type="text" id="input-simple" placeholder="간단 검색 (제목만)">
+                    <button onclick="searchSimple()">검색</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="input-detail" placeholder="상세 검색 (제목+설명+목차)">
+                    <button onclick="searchDetail()">검색</button>
+                </div>
+                
+                <div class="filter-box">
+                    <select id="select-grade" onchange="updateSubjects()">
+                        <option value="all">모든 학년 교과</option>
+                        <option value="1학년">1학년 교과</option>
+                        <option value="2학년">2학년 교과</option>
+                        <option value="3학년">3학년 교과</option>
+                    </select>
+                    <select id="select-subject" onchange="filterBooksBySubject()" style="display: none;">
+                        <option value="all">세부 과목을 선택하세요</option>
+                    </select>
+                </div>
+
+                <button class="btn-random" onclick="recommendRandom()">🎲 랜덤 도서 추천받기</button>
+            </div>
+
+            <div id="book-list" class="book-list"></div>
+        </div>
+
+        <div id="detail-view">
+            <button onclick="goHome()" style="margin-bottom: 20px; background-color: #666;">← 목록으로 돌아가기</button>
+            <div id="detail-content-area"></div>
+        </div>
+    </div>
+
+    <script>
+        let bookData = []; 
+
+        const subjectMap = {
+            "1학년": ['공통국어1', '공통수학1', '과학탐구실험1', '과학탐구실험2', '기술가정', '미술', '생태와 환경', '정보', '진로와 직업', '체육1', '통합과학1', '통합과학2', '통합사회1', '통합사회2', '한국사1'],
+            "2학년": ['경제', '로봇과 공학세계', '문학', '문학과 영상', '물리학', '미술 창작', '법과 사회', '사회와 문화', '생명과학', '생활과학 탐구', '세계사', '세계시민과 지리', '세포와 물질대사', '운동과 건강', '윤리와 사상', '인공지능 기초', '주제 탐구 독서', '지구과학', '한국지리 탐구', '현대사회와 윤리', '화학'], 
+            "3학년": ['과학의 역사와 문화', '국제 관계의 이해', '기후변화와 지속가능한 세계', '매체 의사소통', '미술 감상과 비평', '미술과 매체', '사회문제 탐구', '생물의 유전', '스포츠 과학', '여행지리', '윤리문제 탐구', '융합과학 탐구', '인문학과 윤리', '전자기와 양자', '지구시스템과학', '화학 반응의 세계']  
+        };
+
+        function loadLocalCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                bookData = parseCSVText(text);
+                
+                const statusText = document.getElementById('file-status-text');
+                statusText.innerText = `✅ 총 ${bookData.length}권의 도서 데이터가 완벽하게 연결되었습니다!`;
+                statusText.style.color = "#2E7D32";
+                document.getElementById('csv-file-input').style.display = "none";
+                
+                renderList(bookData);
+            };
+            reader.readAsText(file, "UTF-8");
+        }
+
+        function parseCSVText(text) {
+            let lines = [];
+            let row = [""];
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i];
+                let next = text[i + 1];
+                if (c === '"') {
+                    if (inQuotes && next === '"') {
+                        row[row.length - 1] += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (c === ',' && !inQuotes) {
+                    row.push("");
+                } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                    if (c === '\r' && next === '\n') { i++; }
+                    lines.push(row);
+                    row = [""];
+                } else {
+                    row[row.length - 1] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== "") { lines.push(row); }
+            if (lines.length < 2) return [];
+
+            let headers = lines[0].map(h => h.trim());
+            let resultData = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                let r = lines[i];
+                if (r.length < headers.length) continue;
+                let obj = {};
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = r[j] ? r[j].trim() : "";
+                }
+                if (obj['책제목']) { resultData.push(obj); }
+            }
+            return resultData;
+        }
+
+        function goHome() {
+            document.getElementById('detail-view').style.display = 'none';
+            document.getElementById('home-view').style.display = 'block';
+            
+            document.getElementById('input-simple').value = '';
+            document.getElementById('input-detail').value = '';
+            document.getElementById('select-grade').value = 'all';
+            updateSubjects(); 
+            window.scrollTo(0, 0);
+        }
+
+        function updateSubjects() {
+            const grade = document.getElementById('select-grade').value;
+            const subjectSelect = document.getElementById('select-subject');
+            
+            subjectSelect.innerHTML = '<option value="all">세부 과목을 선택하세요</option>';
+            
+            if (grade === 'all') {
+                subjectSelect.style.display = 'none';
+                renderList(bookData);
+                return;
+            }
+
+            if (subjectMap[grade]) {
+                subjectMap[grade].forEach(subj => {
+                    const opt = document.createElement('option');
+                    opt.value = subj;
+                    opt.innerText = subj;
+                    subjectSelect.appendChild(opt);
+                });
+                subjectSelect.style.display = 'inline-block';
+            }
+            filterBooksBySubject();
+        }
+
+        function filterBooksBySubject() {
+            const grade = document.getElementById('select-grade').value;
+            const subject = document.getElementById('select-subject').value;
+            
+            if (bookData.length === 0) return;
+            let filtered = bookData;
+
+            if (grade !== 'all') {
+                if (subject !== 'all') {
+                    if (grade === '1학년') {
+                        filtered = bookData.filter(book => book['1학년 추천 교과'] && book['1학년 추천 교과'].includes(subject));
+                    } else if (grade === '2학년') {
+                        filtered = bookData.filter(book => book['2학년 추천 교과'] && book['2학년 추천 교과'].includes(subject));
+                    } else if (grade === '3학년') {
+                        filtered = bookData.filter(book => book['3학년 추천 교과'] && book['3학년 추천 교과'].includes(subject));
+                    }
+                } else {
+                    if (grade === '1학년') {
+                        filtered = bookData.filter(book => book['1학년 추천 교과'] && book['1학년 추천 교과'].trim() !== '');
+                    } else if (grade === '2학년') {
+                        filtered = bookData.filter(book => book['2학년 추천 교과'] && book['2학년 추천 교과'].trim() !== '');
+                    } else if (grade === '3학년') {
+                        filtered = bookData.filter(book => book['3학년 추천 교과'] && book['3학년 추천 교과'].trim() !== '');
+                    }
+                }
+            }
+            renderList(filtered);
+        }
+
+        function renderList(data) {
+            const listDiv = document.getElementById('book-list');
+            listDiv.innerHTML = '';
+
+            if (data.length === 0) {
+                listDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">데이터가 없거나 조건에 맞는 도서가 없습니다.</div>';
+                return;
+            }
+
+            data.forEach(book => {
+                const item = document.createElement('div');
+                item.className = 'book-item';
+                item.onclick = () => showDetail(book);
+                
+                const title = book['책제목'] || '제목 없음';
+                const author = book['저자'] || '-';
+                const translator = book['역자'] ? ` / 역자: ${book['역자']}` : '';
+                const publisher = book['출판사'] || '-';
+                const year = book['출판년도'] || '-';
+                const callNum = book['청구기호'] || '-';
+                const regNum = book['등록번호'] || '-';
+                
+                let recTags = [];
+                if(book['1학년 추천 교과'] && book['1학년 추천 교과'].trim()) recTags.push(book['1학년 추천 교과']);
+                if(book['2학년 추천 교과'] && book['2학년 추천 교과'].trim()) recTags.push(book['2학년 추천 교과']);
+                if(book['3학년 추천 교과'] && book['3학년 추천 교과'].trim()) recTags.push(book['3학년 추천 교과']);
+                let recText = recTags.join(' | ');
+                
+                item.innerHTML = `
+                    <div class="book-title">${title} ${recText ? '<span style="font-size:11px; color:#F57F17; font-weight:normal; margin-left:10px;">['+recText+']</span>' : ''}</div>
+                    <div class="book-info">
+                        저자: ${author}${translator} | 출판사: ${publisher} | 출판년도: ${year} <br>
+                        청구기호: ${callNum} | 등록번호: ${regNum}
+                    </div>
+                `;
+                listDiv.appendChild(item);
+            });
+        }
+
+        function showDetail(book) {
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('detail-view').style.display = 'block';
+            window.scrollTo(0, 0);
+
+            const detailDiv = document.getElementById('detail-content-area');
+            const translatorText = book['역자'] ? `<br><strong>역자:</strong> ${book['역자']}` : '';
+            
+            let cautionText = '';
+            if(book['주의점'] && book['출처']) {
+                cautionText = book['주의점'] + '<br><br><strong>출처:</strong> ' + book['출처'];
+            } else if(book['주의점']) {
+                cautionText = book['주의점'];
+            } else if(book['출처']) {
+                cautionText = '<strong>출처:</strong> ' + book['출처'];
+            } else {
+                cautionText = '특별한 주의점이나 출처 정보가 없습니다.';
+            }
+
+            detailDiv.innerHTML = `
+                <div class="detail-header">
+                    <h2 class="detail-title">${book['책제목']}</h2>
+                </div>
+                <div class="detail-meta">
+                    <strong>저자:</strong> ${book['저자']} ${translatorText} <br>
+                    <strong>출판사:</strong> ${book['출판사']} <br>
+                    <strong>출판년도:</strong> ${book['출판년도']} <br>
+                    <strong>청구기호:</strong> ${book['청구기호']} <br>
+                    <strong>등록번호:</strong> ${book['등록번호']} <br>
+                    <strong>1학년 추천 교과:</strong> ${book['1학년 추천 교과'] || '-'}<br>
+                    <strong>2학년 추천 교과:</strong> ${book['2학년 추천 교과'] || '-'}<br>
+                    <strong>3학년 추천 교과:</strong> ${book['3학년 추천 교과'] || '-'}
+                </div>
+                
+                <div class="detail-section">
+                    <h3>⚠️ 주의점 (출처 포함)</h3>
+                    <div class="detail-content">${cautionText}</div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>📖 책 설명</h3>
+                    <div class="detail-content">${book['설명'] || '설명 내용이 없습니다.'}</div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>📑 목차</h3>
+                    <div class="detail-content">${book['목차'] || '목차 정보가 없습니다.'}</div>
+                </div>
+            `;
+        }
+
+        function searchSimple() {
+            if (bookData.length === 0) { alert("도서 데이터 CSV 파일을 먼저 등록해주세요."); return; }
+            const keyword = document.getElementById('input-simple').value.trim().toLowerCase();
+            if(!keyword) { alert("검색어를 입력하세요."); return; }
+            
+            const filtered = bookData.filter(book => 
+                (book['책제목'] && book['책제목'].toLowerCase().includes(keyword))
+            );
+            renderList(filtered);
+        }
+
+        function searchDetail() {
+            if (bookData.length === 0) { alert("도서 데이터 CSV 파일을 먼저 등록해주세요."); return; }
+            const keyword = document.getElementById('input-detail').value.trim().toLowerCase();
+            if(!keyword) { alert("검색어를 입력하세요."); return; }
+            
+            const filtered = bookData.filter(book => {
+                const titleMatch = book['책제목'] && book['책제목'].toLowerCase().includes(keyword);
+                const descMatch = book['설명'] && book['설명'].toLowerCase().includes(keyword);
+                const indexMatch = book['목차'] && book['목차'].toLowerCase().includes(keyword);
+                return titleMatch || descMatch || indexMatch;
+            });
+            renderList(filtered);
+        }
+
+        function recommendRandom() {
+            if (bookData.length === 0) { alert("도서 데이터 CSV 파일을 먼저 등록해주세요."); return; }
+            const randomIndex = Math.floor(Math.random() * bookData.length);
+            const randomBook = bookData[randomIndex];
+            
+            alert(`🎲 오늘의 추천 도서!\n\n[ ${randomBook['책제목']} ]\n\n확인을 누르시면 해당 도서의 상세 페이지로 이동합니다.`);
+            showDetail(randomBook);
+        }
+    </script>
+</body>
+</html>
